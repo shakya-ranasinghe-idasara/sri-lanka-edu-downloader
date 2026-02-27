@@ -2,20 +2,20 @@
 NIE Sri Lanka — Short Notes Generator
 ======================================
 Reads downloaded PDF textbooks/guides and generates structured short notes
-per lesson as a Word (.docx) document using Claude AI.
+per lesson as a Word (.docx) document using DeepSeek AI.
 
 Prerequisites:
-    pip install anthropic pdfplumber python-docx
+    pip install openai pdfplumber python-docx
 
 Usage:
     # Single PDF
-    python short-notes-generator.py --pdf "path/to/Science.pdf" --grade 10
+    python short-notes-generator.py --pdf "path/to/Science.pdf" --grade 10 --api-key "sk-..."
 
     # All PDFs in a folder (e.g. one subject with multiple chapter PDFs)
-    python short-notes-generator.py --folder "../../output/textbooks/grade 10 -en/Science Part I" --grade 10
+    python short-notes-generator.py --folder "../../output/textbooks/grade 10 -en/Science Part I" --grade 10 --api-key "sk-..."
 
-    # Specify API key inline (or set ANTHROPIC_API_KEY env variable)
-    python short-notes-generator.py --pdf "..." --grade 10 --api-key "sk-ant-..."
+    # Use DEEPSEEK_API_KEY environment variable instead
+    python short-notes-generator.py --pdf "..." --grade 10
 
     # Custom output folder
     python short-notes-generator.py --pdf "..." --grade 10 --output "output/"
@@ -27,9 +27,9 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding='utf-8')
 
 try:
-    import anthropic
+    from openai import OpenAI
 except ImportError:
-    print("❌ Missing: pip install anthropic"); sys.exit(1)
+    print("❌ Missing: pip install openai"); sys.exit(1)
 
 try:
     import pdfplumber
@@ -76,77 +76,80 @@ def collect_pdfs(source):
     print(f"   ❌ Not a valid file or folder: {source}")
     sys.exit(1)
 
-# ── Claude API ─────────────────────────────────────────────────────────────────
+# ── DeepSeek API ──────────────────────────────────────────────────────────────
 
 NOTES_TOOL = {
-    "name": "create_short_notes",
-    "description": "Create structured short notes from lesson/chapter content.",
-    "input_schema": {
-        "type": "object",
-        "required": ["subject_title", "lessons"],
-        "properties": {
-            "subject_title": {
-                "type": "string",
-                "description": "Full subject name as identified from the content"
-            },
-            "lessons": {
-                "type": "array",
-                "description": "One entry per lesson/chapter identified in the content",
-                "items": {
-                    "type": "object",
-                    "required": ["lesson_number", "lesson_title", "introduction",
-                                 "core_concepts", "key_processes", "exam_tips",
-                                 "important_points"],
-                    "properties": {
-                        "lesson_number": {"type": "integer"},
-                        "lesson_title":  {"type": "string"},
-                        "introduction": {
-                            "type": "object",
-                            "required": ["text", "bullet_points"],
-                            "properties": {
-                                "text":         {"type": "string",
-                                                 "description": "1-3 sentence intro paragraph"},
-                                "bullet_points": {"type": "array", "items": {"type": "string"},
-                                                  "description": "3-6 key introductory facts"}
-                            }
-                        },
-                        "core_concepts": {
-                            "type": "array",
-                            "description": "2-5 major concept groups (A, B, C…)",
-                            "items": {
+    "type": "function",
+    "function": {
+        "name": "create_short_notes",
+        "description": "Create structured short notes from lesson/chapter content.",
+        "parameters": {
+            "type": "object",
+            "required": ["subject_title", "lessons"],
+            "properties": {
+                "subject_title": {
+                    "type": "string",
+                    "description": "Full subject name as identified from the content"
+                },
+                "lessons": {
+                    "type": "array",
+                    "description": "One entry per lesson/chapter identified in the content",
+                    "items": {
+                        "type": "object",
+                        "required": ["lesson_number", "lesson_title", "introduction",
+                                     "core_concepts", "key_processes", "exam_tips",
+                                     "important_points"],
+                        "properties": {
+                            "lesson_number": {"type": "integer"},
+                            "lesson_title":  {"type": "string"},
+                            "introduction": {
                                 "type": "object",
-                                "required": ["label", "title", "text", "bullet_points"],
+                                "required": ["text", "bullet_points"],
                                 "properties": {
-                                    "label":        {"type": "string",
-                                                     "description": "e.g. A, B, C"},
-                                    "title":        {"type": "string"},
-                                    "text":         {"type": "string",
-                                                     "description": "Short explanatory paragraph"},
-                                    "bullet_points": {"type": "array", "items": {"type": "string"}}
+                                    "text":          {"type": "string",
+                                                      "description": "1-3 sentence intro paragraph"},
+                                    "bullet_points": {"type": "array", "items": {"type": "string"},
+                                                      "description": "3-6 key introductory facts"}
                                 }
-                            }
-                        },
-                        "key_processes": {
-                            "type": "array",
-                            "description": "Definitions/processes students must memorize",
-                            "items": {
-                                "type": "object",
-                                "required": ["name", "explanation"],
-                                "properties": {
-                                    "name":        {"type": "string"},
-                                    "explanation": {"type": "string"}
+                            },
+                            "core_concepts": {
+                                "type": "array",
+                                "description": "2-5 major concept groups (A, B, C…)",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["label", "title", "text", "bullet_points"],
+                                    "properties": {
+                                        "label":         {"type": "string",
+                                                          "description": "e.g. A, B, C"},
+                                        "title":         {"type": "string"},
+                                        "text":          {"type": "string",
+                                                          "description": "Short explanatory paragraph"},
+                                        "bullet_points": {"type": "array", "items": {"type": "string"}}
+                                    }
                                 }
+                            },
+                            "key_processes": {
+                                "type": "array",
+                                "description": "Definitions/processes students must memorize",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["name", "explanation"],
+                                    "properties": {
+                                        "name":        {"type": "string"},
+                                        "explanation": {"type": "string"}
+                                    }
+                                }
+                            },
+                            "exam_tips": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Practical tips for answering exam questions"
+                            },
+                            "important_points": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Must-know facts, safety notes, or common mistakes"
                             }
-                        },
-                        "exam_tips": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "Practical tips for answering exam questions"
-                        },
-                        "important_points": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "Must-know facts, safety notes, or common mistakes"
                         }
                     }
                 }
@@ -160,47 +163,52 @@ You are an expert Sri Lankan education content creator specialising in NIE curri
 Given raw textbook/guide content, you:
 1. Identify EVERY lesson or chapter in the content.
 2. Create comprehensive yet concise short notes for EACH lesson.
-3. Write for students preparing for Grade 6–13 national exams.
+3. Write for students preparing for Grade 6-13 national exams.
 4. Use simple, clear English.
 5. Include all important facts, definitions, examples, and exam hints.
-6. Always call the `create_short_notes` tool with your result — do NOT write prose.
+6. Always call the create_short_notes function with your result - do NOT write prose.
 """
 
-def generate_notes_via_claude(text, grade, subject_hint, api_key):
-    """Call Claude API and return the structured notes JSON."""
-    client = anthropic.Anthropic(api_key=api_key)
+def generate_notes_via_deepseek(text, grade, subject_hint, api_key):
+    """Call DeepSeek API and return the structured notes JSON."""
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com"
+    )
 
     user_msg = f"""Grade: {grade}
-Subject hint: {subject_hint or 'Unknown — identify from content'}
+Subject hint: {subject_hint or 'Unknown - identify from content'}
 
 Below is the raw extracted text from the PDF(s). Identify all lessons/chapters and generate
-complete short notes for each one using the create_short_notes tool.
+complete short notes for each one using the create_short_notes function.
 
 --- BEGIN CONTENT ---
-{text[:150000]}
+{text[:120000]}
 --- END CONTENT ---"""
 
-    print("   🤖 Sending to Claude... ", end='', flush=True)
+    print("   🤖 Sending to DeepSeek... ", end='', flush=True)
     t0 = time.time()
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
+    response = client.chat.completions.create(
+        model="deepseek-chat",
         max_tokens=8192,
-        system=SYSTEM_PROMPT,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": user_msg}
+        ],
         tools=[NOTES_TOOL],
-        tool_choice={"type": "tool", "name": "create_short_notes"},
-        messages=[{"role": "user", "content": user_msg}]
+        tool_choice={"type": "function", "function": {"name": "create_short_notes"}}
     )
 
     elapsed = time.time() - t0
     print(f"done ({elapsed:.1f}s)")
 
-    # Extract tool use result
-    for block in response.content:
-        if block.type == "tool_use" and block.name == "create_short_notes":
-            return block.input
+    # Extract function call result
+    msg = response.choices[0].message
+    if msg.tool_calls:
+        return json.loads(msg.tool_calls[0].function.arguments)
 
-    raise ValueError("Claude did not return the expected tool call.")
+    raise ValueError("DeepSeek did not return the expected function call.")
 
 # ── Word document builder ──────────────────────────────────────────────────────
 
@@ -367,14 +375,14 @@ def main():
     parser.add_argument('--output',  '-o', default='output',
                         help='Output folder for .docx files (default: output/)')
     parser.add_argument('--api-key', '-k', default=None,
-                        help='Anthropic API key (or set ANTHROPIC_API_KEY env variable)')
+                        help='DeepSeek API key (or set DEEPSEEK_API_KEY env variable)')
     parser.add_argument('--max-pages', type=int, default=None,
                         help='Limit pages extracted per PDF (useful for very large files)')
     args = parser.parse_args()
 
-    api_key = args.api_key or os.environ.get('ANTHROPIC_API_KEY')
+    api_key = args.api_key or os.environ.get('DEEPSEEK_API_KEY')
     if not api_key:
-        print("❌ No API key found. Use --api-key or set ANTHROPIC_API_KEY environment variable.")
+        print("❌ No API key found. Use --api-key or set DEEPSEEK_API_KEY environment variable.")
         sys.exit(1)
 
     # Collect PDFs
@@ -418,12 +426,12 @@ def main():
         subject_hint = Path(source).stem if args.pdf else Path(source).name
 
     # Call Claude API
-    print(f"\n🤖 Generating short notes with Claude AI...")
+    print(f"\n🤖 Generating short notes with DeepSeek AI...")
     try:
-        notes_data = generate_notes_via_claude(
+        notes_data = generate_notes_via_deepseek(
             combined_text, args.grade, subject_hint, api_key)
     except Exception as e:
-        print(f"\n❌ Claude API error: {e}")
+        print(f"\n❌ DeepSeek API error: {e}")
         sys.exit(1)
 
     subject_title = notes_data.get('subject_title', subject_hint or 'Subject')
