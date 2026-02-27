@@ -1,0 +1,18 @@
+# Output downloads (don't commit downloaded PDFs)
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Debug HTML files
+*.html
+!README.md
+
+# OS
+.DS_Store
+Thumbs.db
