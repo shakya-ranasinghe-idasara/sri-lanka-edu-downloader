@@ -33,6 +33,11 @@ def clean_filename(name):
     name = name.strip('. ')
     return name[:200] if name else 'unknown'
 
+def subject_folder(name):
+    """Derive a subject folder name by stripping trailing year like (2015)."""
+    s = re.sub(r'\s*\(\d{4}\)\s*$', '', name).strip(' -_')
+    return s if s else name
+
 # ── PDF health check ──────────────────────────────────────────────────────────
 
 def pdf_status(filepath):
@@ -87,7 +92,7 @@ def get_guides(grade_val, page_path, session):
     soup = BeautifulSoup(r2.text, 'html.parser')
     guides = []
     for a in soup.find_all('a', href=True):
-        href = a['href']
+        href = a['href'].strip()
         if '.pdf' in href.lower():
             name = a.get_text(strip=True)
             full_url = urljoin(BASE_URL, href)
@@ -232,6 +237,8 @@ def main():
                         help='Delay between downloads in seconds (default: 1)')
     parser.add_argument('--check',  '-c', action='store_true',
                         help='Audit existing downloads and repair missing/corrupt files')
+    parser.add_argument('--by-subject', action='store_true',
+                        help='Save each guide into its own subject subfolder')
     args = parser.parse_args()
 
     grade_val   = grade_to_value(args.grade)
@@ -289,7 +296,11 @@ def main():
     skipped = 0
 
     for i, g in enumerate(guides, 1):
-        fp     = os.path.join(output_dir, f"{g['name']}.pdf")
+        if args.by_subject:
+            subdir = os.path.join(output_dir, subject_folder(g['name']))
+            fp = os.path.join(subdir, f"{g['name']}.pdf")
+        else:
+            fp = os.path.join(output_dir, f"{g['name']}.pdf")
         status = pdf_status(fp)
 
         print(f"[{i}/{len(guides)}] {g['name']}")

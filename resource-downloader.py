@@ -31,6 +31,34 @@ MEDIUM_MAP = {
 
 DOWNLOADABLE_EXTS = {'.pdf', '.wav', '.mp3'}
 
+# ── Subject detection ──────────────────────────────────────────────────────────
+
+SUBJECT_FOLDERS = [
+    ("Biology",              ["biology"]),
+    ("Physics",              ["physics"]),
+    ("Chemistry",            ["chemistry"]),
+    ("Combined Mathematics", ["combined math", "combined maths"]),
+    ("Mathematics",          ["mathematics", "math"]),
+    ("ICT",                  ["ict", "information communication technology"]),
+    ("English",              ["english"]),
+    ("Western Music",        ["western music"]),
+    ("Agriculture",          ["agriculture"]),
+    ("Tamil",                ["tamil"]),
+    ("Sinhala",              ["sinhala"]),
+    ("Health",               ["health"]),
+    ("Geography",            ["geography"]),
+    ("History",              ["history"]),
+    ("Science",              ["science"]),
+]
+
+def detect_subject(name):
+    """Return a subject folder name based on keywords in the file name."""
+    lower = name.lower()
+    for folder, keywords in SUBJECT_FOLDERS:
+        if any(kw in lower for kw in keywords):
+            return folder
+    return "Other"
+
 def clean_filename(name):
     name = unquote(name)
     name = re.sub(r'[<>:"/\\|?*\n\r\t]', '_', name)
@@ -361,6 +389,8 @@ def main():
                         help='Skip audio files (.wav/.mp3), download PDFs only')
     parser.add_argument('--html',           action='store_true',
                         help='Generate a local HTML index for all three languages and exit')
+    parser.add_argument('--by-subject',    action='store_true',
+                        help='Organise downloads into subject subfolders (Biology/, Chemistry/, etc.)')
     args = parser.parse_args()
 
     session = requests.Session()
@@ -442,7 +472,11 @@ def main():
     skipped = 0
 
     for i, r in enumerate(resources, 1):
-        fp     = os.path.join(output_dir, f"{r['name']}{r['ext']}")
+        if args.by_subject:
+            subject = detect_subject(r['name'])
+            fp = os.path.join(output_dir, subject, f"{r['name']}{r['ext']}")
+        else:
+            fp = os.path.join(output_dir, f"{r['name']}{r['ext']}")
         status = file_status(fp)
 
         print(f"[{i}/{len(resources)}] {r['name']}{r['ext']}")
